@@ -72,6 +72,9 @@ public:
     void update(typename T::Command cmd, const int* addr, long clk);
     // Update statistics:
 
+    // Helper Functions
+    void update_state(typename T::Command cmd, const int* addr);
+    void update_timing(typename T::Command cmd, const int* addr, long clk);
     // Update the number of requests it serves currently
     void update_serving_requests(const int* addr, int delta, long clk);
 
@@ -116,9 +119,7 @@ private:
     // E.g., activate->precharge: tRAS@bank, activate->activate: tRC@bank
     vector<typename T::TimingEntry>* timing;
 
-    // Helper Functions
-    void update_state(typename T::Command cmd, const int* addr);
-    void update_timing(typename T::Command cmd, const int* addr, long clk);
+
 }; /* class DRAM */
 
 

@@ -5,3 +5,14 @@ obj/
 
 # Compiled target executable files
 ramulator
+
+*.stats
+*dram.trace.bak
+log
+*trace
+
+.cproject
+.project
+.settings/
+Default/
+

@@ -13,6 +13,10 @@
 #include "LPDDR4.h"
 #include "WideIO2.h"
 #include "DSARP.h"
+
+#include "HMC.h"
+#include "HMC_Controller.h"
+
 #include <vector>
 #include <functional>
 #include <cmath>

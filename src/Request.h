@@ -34,6 +34,12 @@ public:
     long depart;
     function<void(Request&)> callback; // call back with more info
 
+    long arrive_hmc;
+    long reqid = -1;
+    int burst_count = 0;
+    int transaction_bytes = 0;
+    long depart_hmc;
+
     Request(long addr, Type type, int coreid = 0)
         : is_first_command(true), addr(addr), coreid(coreid), type(type),
       callback([](Request& req){}) {}

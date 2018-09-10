@@ -25,6 +25,8 @@
 #include "DSARP.h"
 #include "ALDRAM.h"
 
+#include "HMC.h"
+
 using namespace std;
 using namespace ramulator;
 
@@ -42,6 +44,8 @@ public:
   vector<int> bank_ref_counters;
   int max_rank_count, max_bank_count;
   int level_chan, level_rank, level_bank, level_sa;
+  // HMC
+  int level_vault;
 
   // ctor
   Refresh(Controller<T>* ctrl) : ctrl(ctrl) {
@@ -107,6 +111,7 @@ private:
     bool res = ctrl->enqueue(req);
     assert(res);
   }
+  void refresh_target(Controller<HMC>* ctrl, int vault);
 
   // Inject refresh at either rank or bank level
   void inject_refresh(bool b_ref_rank) {
@@ -132,6 +137,9 @@ private:
 // where to look for these definitions when controller calls them!
 template<> Refresh<DSARP>::Refresh(Controller<DSARP>* ctrl);
 template<> void Refresh<DSARP>::tick_ref();
+template<> Refresh<HMC>::Refresh(Controller<HMC>* ctrl);
+template<> void Refresh<HMC>::refresh_target(Controller<HMC>* ctrl, int vault);
+template<> void Refresh<HMC>::inject_refresh(bool b_ref_rank);
 
 } /* namespace ramulator */
 

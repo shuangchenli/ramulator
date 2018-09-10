@@ -27,6 +27,11 @@
 #include "ALDRAM.h"
 #include "TLDRAM.h"
 
+#include "HMC_Memory.h"
+#include "HMC_Controller.h"
+#include "HMC.h"
+#include "AdrGen.h"
+
 using namespace std;
 using namespace ramulator;
 
@@ -75,6 +80,58 @@ void run_dramtrace(const Config& configs, Memory<T, Controller>& memory, const c
     memory.finish();
     Stats::statlist.printall();
 
+}
+
+template<typename T>
+void run_dramtrace(const Config& configs, Memory<T, Controller>& memory) {
+		DBG(memory.ctrls.size());
+		vector<AdrGen<T>*> adrgens;
+		for(int i = 0; i < memory.ctrls.size(); i++) {
+			AdrGen<T> *adrgen = new AdrGen<T>(configs, i, memory);
+			adrgens.push_back(adrgen);
+		}
+    /* run simulation */
+    bool stall = false, end = false;
+    int reads = 0, clks = 0;
+    long addr = 0;
+    Request::Type type = Request::Type::READ;
+    map<int, int> latencies;
+    auto read_complete = [&latencies](Request& r){latencies[r.depart - r.arrive]++;};
+
+    Request req(addr, type, read_complete);
+
+    while (!end || memory.pending_requests()){
+        if (!end){
+            end = clks > configs.get_int_value("max_tick");
+        }
+
+        if (!end){
+        		for(auto adrgen: adrgens) {
+        			stall = false;
+        			while(!stall) {
+        				req.addr = adrgen->gen();
+        				DBG(adrgen->id);
+        				DBG(req.addr);
+        				req.type = Request::Type::READ;
+        				stall = !memory.send(req);
+        				reads++;
+        			}
+          		adrgen->rollback();
+          		stall = false;
+        		}
+        }
+        else {
+            memory.set_high_writeq_watermark(0.0f); // make sure that all write requests in the
+                                                    // write queue are drained
+        }
+
+        memory.tick();
+        clks ++;
+        Stats::curTick++; // memory clock, global, for Statistics
+    }
+    // This a workaround for statistics set only initially lost in the end
+    memory.finish();
+    Stats::statlist.printall();
 }
 
 template <typename T>
@@ -169,7 +226,45 @@ void start_run(const Config& configs, T* spec, const vector<const char*>& files)
   if (configs["trace_type"] == "CPU") {
     run_cputrace(configs, memory, files);
   } else if (configs["trace_type"] == "DRAM") {
-    run_dramtrace(configs, memory, files[0]);
+  	FILE* f = fopen(files[0], "r");
+  	if(f == NULL) {
+  		run_dramtrace(configs, memory);
+  	}
+  	else {
+  		fclose(f);
+  		run_dramtrace(configs, memory, files[0]);
+  	}
+  }
+}
+
+template<>
+void start_run<HMC>(const Config& configs, HMC* spec, const vector<const char*>& files) {
+  int V = spec->org_entry.count[int(HMC::Level::Vault)];
+  int S = configs.get_stacks();
+  int total_vault_number = V * S;
+  debug_hmc("total_vault_number: %d\n", total_vault_number);
+  std::vector<Controller<HMC>*> vault_ctrls;
+  for (int c = 0 ; c < total_vault_number ; ++c) {
+    DRAM<HMC>* vault = new DRAM<HMC>(spec, HMC::Level::Vault);
+    vault->id = c;
+    vault->regStats("");
+    Controller<HMC>* ctrl = new Controller<HMC>(configs, vault);
+    vault_ctrls.push_back(ctrl);
+  }
+  Memory<HMC, Controller> memory(configs, vault_ctrls);
+
+  assert(files.size() != 0);
+  if (configs["trace_type"] == "CPU") {
+    run_cputrace(configs, memory, files);
+  } else if (configs["trace_type"] == "DRAM") {
+  	FILE* f = fopen(files[0], "r");
+  	if(f == NULL) {
+  		run_dramtrace(configs, memory);
+  	}
+  	else {
+  		fclose(f);
+  		run_dramtrace(configs, memory, files[0]);
+  	}
   }
 }
 
@@ -180,7 +275,7 @@ int main(int argc, const char *argv[])
             "Example: %s ramulator-configs.cfg --mode=cpu cpu.trace cpu.trace\n", argv[0], argv[0]);
         return 0;
     }
-
+    DBG("starts...");
     Config configs(argv[1]);
 
     const std::string& standard = configs["standard"];
@@ -241,6 +336,13 @@ int main(int argc, const char *argv[])
       WideIO2* wio2 = new WideIO2(configs["org"], configs["speed"], configs.get_channels());
       wio2->channel_width *= 2;
       start_run(configs, wio2, files);
+    } else if (standard == "HMC") {
+    	DBG(configs["maxblock"]);
+    	HMC* hmc = new HMC(configs["org"], configs["speed"], configs["maxblock"],
+      configs["link_width"], configs["lane_speed"],
+      configs.get_int_value("source_mode_host_links"),
+      configs.get_int_value("payload_flits"));
+    	start_run(configs, hmc, files);
     }
     // Various refresh mechanisms
       else if (standard == "DSARP") {
