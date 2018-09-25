@@ -92,7 +92,8 @@ public:
 
     deque<Request> pending;  // read requests that are about to receive data from DRAM
     bool write_mode = false;  // whether write requests should be prioritized over reads
-    float wr_high_watermark = 0.8f; // threshold for switching to write mode
+    //float wr_high_watermark = 0.8f; // threshold for switching to write mode
+    float wr_high_watermark = 0.4f; // threshold for switching to write mode
     float wr_low_watermark = 0.2f; // threshold for switching back to read mode
     //long refreshed = 0;  // last time refresh requests were generated
 
@@ -102,7 +103,10 @@ public:
     bool record_cmd_trace = false;
     /* Commands to stdout */
     bool print_cmd_trace = false;
-
+#ifdef DEBUG_1
+    int64_t data_onFly = 0;
+    int64_t wdata_onFly = 0;
+#endif
     /* Constructor */
     Controller(const Config& configs, DRAM<T>* channel) :
         channel(channel),
@@ -313,9 +317,9 @@ public:
     bool enqueue(Request& req)
     {
         Queue& queue = get_queue(req.type);
+        DBG(queue.size());
         if (queue.max == queue.size())
             return false;
-
         req.arrive = clk;
         queue.q.push_back(req);
         // shortcut for read requests, if a write to same addr exists
@@ -325,7 +329,22 @@ public:
             req.depart = clk + 1;
             pending.push_back(req);
             readq.q.pop_back();
+#ifdef DEBUG_1
+            return true;
+#endif
         }
+#ifdef DEBUG_1
+        if(req.type == Request::Type::READ) {
+        	data_onFly++;
+        }
+        else if (req.type == Request::Type::WRITE) {
+        	wdata_onFly++;
+        	cout << " --[" << clk << "] write " << req.addr << " enqueue." << endl;
+        }
+        else {
+        	cout << "req.type = " << int(req.type)  << endl;
+        }
+#endif
         return true;
     }
 
@@ -335,7 +354,12 @@ public:
         req_queue_length_sum += readq.size() + writeq.size() + pending.size();
         read_req_queue_length_sum += readq.size() + pending.size();
         write_req_queue_length_sum += writeq.size();
-
+#ifdef DEBUG_1
+            if(clk % 10000 == 0) {
+            	cout << "[mem clk]: " << clk << ": actq.size() = " << actq.size() << " readq.size() = " << readq.size() << " writeq.size() = " << writeq.size()
+            			<< " pending.size() = " << pending.size() << " #rdata on fly " << data_onFly << " #wdata on fly " << wdata_onFly << endl;
+            }
+#endif
         /*** 1. Serve completed reads ***/
         if (pending.size()) {
             Request& req = pending[0];
@@ -347,6 +371,9 @@ public:
                 }
                 req.callback(req);
                 pending.pop_front();
+#ifdef DEBUG_1
+        data_onFly--;
+#endif
             }
         }
 
@@ -451,6 +478,13 @@ public:
         }
 
         if (req->type == Request::Type::WRITE) {
+        	req->depart = clk;
+        	Request& req_tmp = *req;
+#ifdef DEBUG_1
+        	cout << " --[" << clk << "] done write " << req_tmp.addr << endl;
+        	wdata_onFly--;
+#endif
+        		req_tmp.callback(req_tmp);
             channel->update_serving_requests(req->addr_vec.data(), -1, clk);
         }
 

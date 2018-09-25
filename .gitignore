@@ -15,4 +15,5 @@ log
 .project
 .settings/
 Default/
-
+*.so
+*.bak

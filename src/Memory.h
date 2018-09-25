@@ -292,7 +292,6 @@ public:
         req.addr_vec.resize(addr_bits.size());
         long addr = req.addr;
         int coreid = req.coreid;
-
         // Each transaction size is 2^tx_bits, so first clear the lowest tx_bits bits
         clear_lower_bits(addr, tx_bits);
 
@@ -315,6 +314,7 @@ public:
             // tally stats here to avoid double counting for requests that aren't enqueued
             ++num_incoming_requests;
             if (req.type == Request::Type::READ) {
+            	DBG(num_read_requests[coreid].value());
               ++num_read_requests[coreid];
               ++incoming_read_reqs_per_channel[req.addr_vec[int(T::Level::Channel)]];
             }
@@ -322,6 +322,7 @@ public:
               ++num_write_requests[coreid];
             }
             ++incoming_requests_per_channel[req.addr_vec[int(T::Level::Channel)]];
+
             return true;
         }
 

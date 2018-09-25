@@ -18,6 +18,7 @@
       } while (0)
 #endif
 
+//#define DEBUG_1
 #ifdef DEBUG
 #define DBG(msg) \
 		std::cout << "[DBG]: " << __FILE__ << "(" << __LINE__ << "): " \

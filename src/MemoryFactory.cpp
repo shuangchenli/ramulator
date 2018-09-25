@@ -66,6 +66,25 @@ MemoryBase *MemoryFactory<SALP>::create(const Config& configs, int cacheline) {
     return (MemoryBase *)populate_memory(configs, spec, channels, ranks);
 }
 
+template <>
+MemoryBase *MemoryFactory<DDR4>::create(const Config& configs, int cacheline) {
+    int channels = configs.get_channels();
+    int ranks = configs.get_ranks();
+    const string& std_name = configs["standard"];
+    const string& org_name = configs["org"];
+    const string& speed_name = configs["speed"];
+
+    DDR4 *spec = new DDR4(org_name, speed_name);
+
+    spec->set_channel_number(channels);
+    spec->set_rank_number(ranks);
+
+    extend_channel_width(spec, cacheline);
+
+    return (MemoryBase *)populate_memory(configs, spec, channels, ranks);
+}
+
+
 }
 
 // This function can be used by autoconf AC_CHECK_LIB since

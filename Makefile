@@ -1,7 +1,7 @@
 SRCDIR := src
 OBJDIR := obj
 MAIN := $(SRCDIR)/Main.cpp
-SRCS := $(filter-out $(MAIN) $(SRCDIR)/Gem5Wrapper.cpp, $(wildcard $(SRCDIR)/*.cpp))
+SRCS := $(filter-out $(MAIN) $(SRCDIR)/Gem5Wrapper.c, $(wildcard $(SRCDIR)/*.cpp))
 OBJS := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 
 
@@ -9,7 +9,7 @@ OBJS := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 #   g++ 4.x due to an internal compiler error when processing lambda functions.
 CXX := clang++
 # CXX := g++-5
-CXXFLAGS := -O3 -std=c++11 -g -Wall
+CXXFLAGS := -O3 -std=c++11 -g -Wall -fPIC
 
 .PHONY: all clean depend
 
@@ -32,8 +32,8 @@ ifneq ($(MAKECMDGOALS),clean)
 endif
 
 
-ramulator: $(MAIN) $(OBJS) $(SRCDIR)/*.h | depend
-	$(CXX) $(CXXFLAGS) -DRAMULATOR -o $@ $(MAIN) $(OBJS)
+ramulator: $(OBJS) $(SRCDIR)/*.h | depend
+	$(CXX) -g -shared -Wl,-soname,libramulator.so  -DRAMULATOR -o libramulator.so $(OBJS)
 
 libramulator.a: $(OBJS) $(OBJDIR)/Gem5Wrapper.o
 	libtool -static -o $@ $(OBJS) $(OBJDIR)/Gem5Wrapper.o

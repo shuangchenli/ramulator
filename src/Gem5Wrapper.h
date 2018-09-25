@@ -16,8 +16,9 @@ class MemoryBase;
 class Gem5Wrapper 
 {
 private:
-    MemoryBase *mem;
+		MemoryBase *mem;
 public:
+		//MemoryBase *mem;
     double tCK;
     Gem5Wrapper(const Config& configs, int cacheline);
     ~Gem5Wrapper();

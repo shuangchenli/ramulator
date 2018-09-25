@@ -10,6 +10,7 @@
 
 #include "WideIO2.h"
 #include "SALP.h"
+#include "DDR4.h"
 
 using namespace std;
 
@@ -76,6 +77,8 @@ template <>
 MemoryBase *MemoryFactory<WideIO2>::create(const Config& configs, int cacheline);
 template <>
 MemoryBase *MemoryFactory<SALP>::create(const Config& configs, int cacheline);
+template <>
+MemoryBase *MemoryFactory<DDR4>::create(const Config& configs, int cacheline);
 
 } /*namespace ramulator*/
 
